@@ -1,0 +1,48 @@
+name: 'Flutter AI Code Reviewer (Gemini)'
+description: 'Automated Flutter/Dart code review using Google Gemini AI with Clean Architecture standards'
+author: 'vincetran'
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  gemini-api-key:
+    description: 'Google Gemini API key for AI code review'
+    required: true
+  github-token:
+    description: 'GitHub token for posting PR comments (use secrets.GITHUB_TOKEN)'
+    required: true
+  guide-file-path:
+    description: 'Path to custom Flutter code review guide (optional)'
+    required: false
+    default: 'scripts/FLUTTER_CODE_REVIEW_GUIDE.md'
+  review-language:
+    description: 'Language for code review comments: "vietnamese" or "english"'
+    required: false
+    default: 'vietnamese'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r ${{ github.action_path }}/scripts/requirements.txt
+
+    - name: Run Gemini AI Code Reviewer
+      shell: bash
+      env:
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_REF: ${{ github.ref }}
+        GUIDE_FILE_PATH: ${{ inputs.guide-file-path }}
+        REVIEW_LANGUAGE: ${{ inputs.review-language }}
+      run: python ${{ github.action_path }}/scripts/ai_review.py

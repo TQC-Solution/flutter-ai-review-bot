@@ -12,6 +12,8 @@ Environment variables (provided via GitHub Actions secrets / env):
 - GITHUB_TOKEN: GitHub token (usually provided by Actions)
 - GITHUB_REPOSITORY: owner/repo
 - GITHUB_REF: the Git ref (expects refs/pull/<PR>/merge or refs/pull/<PR>/head)
+- GUIDE_FILE_PATH: (optional) custom path to coding guide file
+- REVIEW_LANGUAGE: (optional) review language - 'vietnamese' or 'english' (default: vietnamese)
 
 """
 
@@ -33,6 +35,8 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO = os.getenv("GITHUB_REPOSITORY")
 GITHUB_REF = os.getenv("GITHUB_REF", "")
+GUIDE_FILE_PATH = os.getenv("GUIDE_FILE_PATH", "")
+REVIEW_LANGUAGE = os.getenv("REVIEW_LANGUAGE", "vietnamese").lower()
 
 def get_pr_number_from_ref(ref: str):
     # expected formats:
@@ -169,7 +173,7 @@ def call_gemini(prompt: str) -> str:
             "temperature": 0.7,
             "top_p": 0.95,
             "top_k": 40,
-            "max_output_tokens": 2048,  # Increased for detailed code review
+            "max_output_tokens": 8192,  # Increased to handle long reviews
         }
 
         last_error = None
@@ -263,6 +267,7 @@ def call_gemini(prompt: str) -> str:
             raise RuntimeError(f"Gemini API call failed: {e}")
 
 def post_pr_comment(repo: str, pr_number: str, body: str, token: str):
+    """Post a single comment to PR. GitHub has a 65,536 character limit per comment."""
     comments_url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
     headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
     payload = {"body": body}
@@ -270,17 +275,122 @@ def post_pr_comment(repo: str, pr_number: str, body: str, token: str):
     r.raise_for_status()
     return r.json()
 
+def post_pr_comments_chunked(repo: str, pr_number: str, review_text: str, token: str):
+    """Split long reviews into multiple comments if needed.
+
+    GitHub comment limit: 65,536 characters
+    We use 60,000 as safe limit to account for markdown formatting
+    """
+    MAX_COMMENT_LENGTH = 60000
+    header = "🤖 **AI Code Review - Flutter (Gemini)**\n\n"
+
+    # If review fits in one comment, post it directly
+    if len(review_text) <= MAX_COMMENT_LENGTH - len(header):
+        full_comment = header + review_text
+        post_pr_comment(repo, pr_number, full_comment, token)
+        print(f"   ✅ Posted 1 comment ({len(full_comment)} characters)")
+        return
+
+    # Split into chunks
+    print(f"   ⚠️  Review is long ({len(review_text)} chars), splitting into multiple comments...")
+
+    # Split by sections (look for heading markers or bullet points)
+    # Try to split at logical boundaries: ## headings, 🔴, ⚠️, 💡
+    chunks = []
+    current_chunk = ""
+    SAFE_LIMIT = MAX_COMMENT_LENGTH - len(header) - 500  # Extra buffer for part header
+
+    for line in review_text.split('\n'):
+        # Check if adding this line would exceed limit
+        test_chunk = current_chunk + line + '\n'
+
+        if len(current_chunk) > SAFE_LIMIT:
+            # Current chunk is already too big, must split now
+            if line.strip().startswith(('##', '###', '🔴', '⚠️', '💡', '✅', '---')):
+                # Good place to split - save current chunk
+                if current_chunk.strip():
+                    chunks.append(current_chunk.strip())
+                current_chunk = line + '\n'
+            elif current_chunk.strip():
+                # Force split even if not ideal boundary
+                chunks.append(current_chunk.strip())
+                current_chunk = line + '\n'
+        else:
+            # Still within limit, keep adding
+            current_chunk = test_chunk
+
+    # Add last chunk
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+
+    # Post chunks
+    for i, chunk in enumerate(chunks, 1):
+        part_header = f"{header}"
+        if len(chunks) > 1:
+            part_header += f"**Part {i}/{len(chunks)}**\n\n"
+
+        comment_body = part_header + chunk
+        post_pr_comment(repo, pr_number, comment_body, token)
+        print(f"   ✅ Posted part {i}/{len(chunks)} ({len(comment_body)} characters)")
+
+        # Small delay between comments to avoid rate limiting
+        if i < len(chunks):
+            time.sleep(1)
+
+def load_prompt_template(language: str) -> str:
+    """Load prompt template from file based on language."""
+    script_dir = os.path.dirname(__file__)
+
+    if language == "english":
+        prompt_file = os.path.join(script_dir, "prompts", "review_prompt_en.txt")
+    else:  # Vietnamese (default)
+        prompt_file = os.path.join(script_dir, "prompts", "review_prompt_vi.txt")
+
+    try:
+        with open(prompt_file, "r", encoding="utf-8") as f:
+            template = f.read()
+        print(f"   ✅ Loaded prompt template: {prompt_file}")
+        return template
+    except Exception as e:
+        print(f"⚠️ Warning: Could not load prompt file from {prompt_file}: {e}")
+        # Fallback to hardcoded Vietnamese prompt
+        return """Bạn là một senior Flutter/Dart engineer. Hãy review code changes dưới đây theo coding standards của dự án.
+
+=== QUY TẮC & CHUẨN MỰC LẬP TRÌNH ===
+{coding_rules}
+
+=== NHIỆM VỤ CỦA BẠN ===
+Hãy phân tích code diff và CHỈ liệt kê những vấn đề/vi phạm thực sự tìm thấy.
+
+YÊU CẦU QUAN TRỌNG:
+- Trả lời HOÀN TOÀN BẰNG TIẾNG VIỆT
+- Format: Markdown với emoji (🔴 lỗi nghiêm trọng, ⚠️ cảnh báo, 💡 gợi ý)
+
+=== CODE DIFF CẦN REVIEW ===
+{code_diff}
+"""
+
 def build_prompt(diff_text: str) -> str:
     short_diff = diff_text[:12000]  # limit to avoid huge payloads in tokens
 
     # Load coding rules from FLUTTER_CODE_REVIEW_GUIDE.md
-    guide_path = os.path.join(os.path.dirname(__file__), "FLUTTER_CODE_REVIEW_GUIDE.md")
+    # Use custom path if provided, otherwise use default path
+    if GUIDE_FILE_PATH and os.path.isabs(GUIDE_FILE_PATH):
+        guide_path = GUIDE_FILE_PATH
+    elif GUIDE_FILE_PATH:
+        # If relative path provided, resolve from action root
+        guide_path = os.path.abspath(GUIDE_FILE_PATH)
+    else:
+        # Default to script directory
+        guide_path = os.path.join(os.path.dirname(__file__), "FLUTTER_CODE_REVIEW_GUIDE.md")
+
     coding_rules = ""
     try:
         with open(guide_path, "r", encoding="utf-8") as f:
             coding_rules = f.read()
+        print(f"   ✅ Loaded guide from: {guide_path}")
     except Exception as e:
-        print(f"⚠️ Warning: Could not load FLUTTER_CODE_REVIEW_GUIDE.md: {e}")
+        print(f"⚠️ Warning: Could not load guide file from {guide_path}: {e}")
         # Fallback to minimal rules if file not found
         coding_rules = textwrap.dedent("""
         ## Key Flutter Review Rules:
@@ -291,39 +401,15 @@ def build_prompt(diff_text: str) -> str:
         - Error Handling: Return Either<Failure, T> in repositories
         """)
 
-    prompt = textwrap.dedent(f"""
-    Bạn là một senior Flutter/Dart engineer. Hãy review code changes dưới đây theo coding standards của dự án.
+    # Load prompt template based on language
+    prompt_template = load_prompt_template(REVIEW_LANGUAGE)
 
-    === QUY TẮC & CHUẨN MỰC LẬP TRÌNH ===
-    {coding_rules}
+    # Replace placeholders in template
+    prompt = prompt_template.format(
+        coding_rules=coding_rules,
+        code_diff=short_diff
+    )
 
-    === NHIỆM VỤ CỦA BẠN ===
-    Hãy phân tích code diff và CHỈ liệt kê những vấn đề/vi phạm thực sự tìm thấy theo các tiêu chí:
-    - **Vi phạm kiến trúc** (Clean Architecture, dependencies giữa các layer)
-    - **Quản lý GetX controller** (lifecycle, cách dùng Get.put/Get.find)
-    - **Type safety** (hardcoded assets, translation strings)
-    - **Xử lý lỗi** (Either pattern, Failure types)
-    - **Quy ước đặt tên** (snake_case, PascalCase, camelCase)
-    - **Chất lượng code** (tính đúng đắn, bugs, dễ đọc, hiệu năng)
-
-    YÊU CẦU QUAN TRỌNG:
-    - Trả lời HOÀN TOÀN BẰNG TIẾNG VIỆT
-    - CHỈ liệt kê những mục có lỗi/vi phạm, KHÔNG cần liệt kê mục không có vấn đề
-    - Nếu không tìm thấy lỗi nào, hãy nói: "✅ Code changes tuân thủ tốt coding standards của dự án. Không phát hiện vấn đề nghiêm trọng."
-    - Format: Markdown bullet points với emoji tương ứng (🔴 cho lỗi nghiêm trọng, ⚠️ cho cảnh báo, 💡 cho gợi ý cải thiện)
-    - Cụ thể: Chỉ rõ file path và dòng code có vấn đề
-    - Actionable: Đưa ra gợi ý fix cụ thể, có ví dụ code nếu cần
-
-    VÍ DỤ FORMAT:
-    🔴 **Vi phạm Clean Architecture**: File `lib/features/auth/domain/user_entity.dart:5` đang import Data layer.
-       → Fix: Xóa `import '../../data/models/user_model.dart'`
-
-    ⚠️ **Hardcoded string**: Tìm thấy `Text('Login')` tại `login_screen.dart:45`
-       → Fix: Dùng `Text(context.tr('auth.login'))`
-
-    === CODE DIFF CẦN REVIEW ===
-    {short_diff}
-    """)
     return prompt
 
 def main():
@@ -335,6 +421,8 @@ def main():
     print(f"   GITHUB_REPOSITORY: {REPO or '❌ NOT SET'}")
     print(f"   GITHUB_TOKEN:      {'✅ SET (' + GITHUB_TOKEN[:8] + '...)' if GITHUB_TOKEN else '❌ NOT SET'}")
     print(f"   GEMINI_API_KEY:    {'✅ SET' if GEMINI_KEY else '❌ NOT SET'}")
+    print(f"   REVIEW_LANGUAGE:   {REVIEW_LANGUAGE}")
+    print(f"   GUIDE_FILE_PATH:   {GUIDE_FILE_PATH or '(default)'}")
     print("=" * 60)
     print()
 
@@ -374,19 +462,22 @@ def main():
     except Exception as e:
         print(f"❌ Gemini call failed: {e}")
         # Post a helpful comment indicating Gemini couldn't be called
-        fallback = ("⚠️ AI review không thể tạo được do lỗi cấu hình hoặc SDK.\n\n"
-                    "Đảm bảo GEMINI_API_KEY đã được set và google-generativeai đã được cài đặt.\n")
+        if REVIEW_LANGUAGE == "english":
+            fallback = ("⚠️ AI review could not be generated due to configuration or SDK error.\n\n"
+                       "Please ensure GEMINI_API_KEY is set and google-generativeai is installed.\n")
+        else:
+            fallback = ("⚠️ AI review không thể tạo được do lỗi cấu hình hoặc SDK.\n\n"
+                       "Đảm bảo GEMINI_API_KEY đã được set và google-generativeai đã được cài đặt.\n")
         try:
             post_pr_comment(REPO, pr_number, "🤖 **AI Code Review - Flutter (Gemini)**\n\n" + fallback, GITHUB_TOKEN)
         except Exception:
             pass
         sys.exit(1)
 
-    final_comment = "🤖 **AI Code Review - Flutter (Gemini)**\n\n" + review.strip()
     try:
-        print("✉️ Posting consolidated comment to PR...")
-        post_pr_comment(REPO, pr_number, final_comment, GITHUB_TOKEN)
-        print("✅ Posted AI review comment.")
+        print("✉️ Posting review comment(s) to PR...")
+        post_pr_comments_chunked(REPO, pr_number, review.strip(), GITHUB_TOKEN)
+        print("✅ Posted AI review comment(s) successfully.")
     except Exception as e:
         print(f"❌ Failed to post comment: {e}")
         sys.exit(1)
