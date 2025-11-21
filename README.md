@@ -166,8 +166,6 @@ flutter-ai-review-bot/
 │       ├── review_prompt_vi.txt        # Vietnamese prompt
 │       ├── review_prompt_en.txt        # English prompt
 │       └── README.md                   # Prompt documentation
-├── QUICK_START.md                      # Quick start guide for refactored code
-├── REFACTORING.md                      # Detailed refactoring documentation
 └── README.md
 ```
 
