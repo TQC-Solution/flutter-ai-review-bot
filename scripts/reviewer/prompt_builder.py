@@ -51,20 +51,47 @@ class PromptBuilder:
         return prompt
 
     def _load_coding_rules(self) -> str:
-        """Load coding rules from guide file.
+        """Load coding rules from all rule files in the rule/ directory.
 
         Returns:
-            Coding rules text or fallback minimal rules
+            Combined coding rules text from all rule files or fallback minimal rules
         """
-        guide_path = self._get_guide_path()
+        rules_dir = os.path.join(self.script_dir, "rule")
 
         try:
-            with open(guide_path, "r", encoding="utf-8") as f:
-                coding_rules = f.read()
-            print(f"   ✅ Loaded guide from: {guide_path}")
-            return coding_rules
+            # Get all markdown files in the rule directory
+            rule_files = sorted([
+                f for f in os.listdir(rules_dir)
+                if f.endswith('.md')
+            ])
+
+            if not rule_files:
+                print(f"⚠️ Warning: No rule files found in {rules_dir}")
+                return self._get_fallback_rules()
+
+            # Load and combine all rule files
+            all_rules = []
+            for rule_file in rule_files:
+                rule_path = os.path.join(rules_dir, rule_file)
+                try:
+                    with open(rule_path, "r", encoding="utf-8") as f:
+                        rule_content = f.read()
+                        all_rules.append(rule_content)
+                    print(f"   ✅ Loaded rule: {rule_file}")
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not load rule file {rule_file}: {e}")
+
+            if not all_rules:
+                print(f"⚠️ Warning: No rules could be loaded")
+                return self._get_fallback_rules()
+
+            # Combine all rules with separators
+            combined_rules = "\n\n---\n\n".join(all_rules)
+            print(f"   ✅ Successfully loaded {len(all_rules)} rule file(s)")
+            return combined_rules
+
         except Exception as e:
-            print(f"⚠️ Warning: Could not load guide file from {guide_path}: {e}")
+            print(f"⚠️ Warning: Could not access rules directory {rules_dir}: {e}")
             return self._get_fallback_rules()
 
     def _load_prompt_template(self) -> str:
@@ -90,24 +117,6 @@ class PromptBuilder:
         except Exception as e:
             print(f"⚠️ Warning: Could not load prompt file from {prompt_file}: {e}")
             return self._get_fallback_template()
-
-    def _get_guide_path(self) -> str:
-        """Get the path to the coding guide file.
-
-        Returns:
-            Absolute path to guide file
-        """
-        guide_file_path = Config.GUIDE_FILE_PATH
-
-        if guide_file_path and os.path.isabs(guide_file_path):
-            # Absolute path provided
-            return guide_file_path
-        elif guide_file_path:
-            # Relative path provided, resolve from action root
-            return os.path.abspath(guide_file_path)
-        else:
-            # Default to script directory
-            return os.path.join(self.script_dir, "FLUTTER_CODE_REVIEW_GUIDE.md")
 
     def _get_fallback_rules(self) -> str:
         """Get fallback coding rules if file cannot be loaded.

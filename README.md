@@ -13,7 +13,7 @@ This action reviews Flutter code based on Clean Architecture principles, GetX be
 - ✅ **GetX Best Practices**: Checks controller lifecycle and instance management
 - ✅ **Type Safety**: Detects hardcoded assets and translation strings
 - ✅ **Multi-language Support**: Review comments in Vietnamese or English
-- ✅ **Customizable Guide**: Use your own coding standards guide
+- ✅ **Modular Rule System**: Coding standards organized in separate rule files for easy maintenance
 - ✅ **Single Consolidated Comment**: Posts one comprehensive review per PR to minimize noise
 - ✅ **Automatic Retry**: Handles rate limits with exponential backoff
 
@@ -59,7 +59,6 @@ jobs:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           review-language: 'vietnamese'  # Optional: 'vietnamese' or 'english' (default: vietnamese)
-          # guide-file-path: 'docs/CODING_STANDARDS.md'  # Optional: custom guide file path
 ```
 
 ### Setup
@@ -86,7 +85,6 @@ jobs:
 | `gemini-api-key` | Yes | - | Google Gemini API key for AI code review |
 | `github-token` | Yes | - | GitHub token (use `${{ secrets.GITHUB_TOKEN }}`) |
 | `review-language` | No | `vietnamese` | Review comment language: `vietnamese` or `english` |
-| `guide-file-path` | No | `scripts/FLUTTER_CODE_REVIEW_GUIDE.md` | Path to custom coding standards guide |
 
 ### Examples
 
@@ -98,16 +96,6 @@ jobs:
     gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
     review-language: 'english'
-```
-
-#### Custom Coding Guide
-
-```yaml
-- uses: vincetran/flutter-ai-review-bot@main
-  with:
-    gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-    guide-file-path: 'docs/my-custom-guide.md'
 ```
 
 ## Review Criteria
@@ -151,7 +139,7 @@ flutter-ai-review-bot/
 │   └── ai-review.yml                   # Workflow for this repo (uses: ./)
 ├── scripts/
 │   ├── ai_review.py                    # Main orchestrator (104 lines)
-│   ├── reviewer/                       # Modular package 
+│   ├── reviewer/                       # Modular package
 │   │   ├── __init__.py                # Package exports
 │   │   ├── config.py                  # Configuration management
 │   │   ├── github_client.py           # GitHub API operations
@@ -161,7 +149,10 @@ flutter-ai-review-bot/
 │   │   ├── README.md                  # Module documentation
 │   │   └── ARCHITECTURE.md            # Architecture details
 │   ├── requirements.txt                # Python dependencies
-│   ├── FLUTTER_CODE_REVIEW_GUIDE.md   # Coding standards guide
+│   ├── rule/                           # Modular coding rules
+│   │   ├── CLEAN_ARCHITECTURE_RULES.md # Clean Architecture guidelines
+│   │   ├── GETX_CONTROLLER_RULES.md    # GetX best practices
+│   │   └── CODING_RULES.md             # General coding standards
 │   └── prompts/                        # AI prompt templates
 │       ├── review_prompt_vi.txt        # Vietnamese prompt
 │       ├── review_prompt_en.txt        # English prompt
@@ -235,17 +226,18 @@ pip install -r scripts/requirements.txt
 python scripts/ai_review.py
 ```
 
-### Customizing the Review Guide
+### Customizing the Review Rules
 
-Create your own coding standards guide in Markdown format:
+The review rules are organized in modular files in `scripts/rule/`:
 
-1. Create a file (e.g., `docs/MY_GUIDE.md`)
-2. Use it in your workflow:
-   ```yaml
-   guide-file-path: 'docs/MY_GUIDE.md'
-   ```
+- **[CLEAN_ARCHITECTURE_RULES.md](scripts/rule/CLEAN_ARCHITECTURE_RULES.md)** - Clean Architecture principles and layer dependencies
+- **[GETX_CONTROLLER_RULES.md](scripts/rule/GETX_CONTROLLER_RULES.md)** - GetX state management best practices
+- **[CODING_RULES.md](scripts/rule/CODING_RULES.md)** - General coding standards (naming, assets, i18n, error handling)
 
-See [scripts/FLUTTER_CODE_REVIEW_GUIDE.md](scripts/FLUTTER_CODE_REVIEW_GUIDE.md) for an example.
+**To customize:**
+1. Edit the existing rule files to match your project's standards
+2. Add new rule files to `scripts/rule/` (they will be automatically loaded)
+3. All `.md` files in the `rule/` directory are combined and used for code review
 
 ### Customizing Review Prompts
 

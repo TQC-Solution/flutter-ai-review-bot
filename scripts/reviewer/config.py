@@ -14,7 +14,6 @@ class Config:
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
     GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
     GITHUB_REF = os.getenv("GITHUB_REF", "")
-    GUIDE_FILE_PATH = os.getenv("GUIDE_FILE_PATH", "")
     REVIEW_LANGUAGE = os.getenv("REVIEW_LANGUAGE", "vietnamese").lower()
 
     # Constants
@@ -93,6 +92,5 @@ class Config:
         print(f"   GITHUB_TOKEN:      {'✅ SET (' + cls.GITHUB_TOKEN[:8] + '...)' if cls.GITHUB_TOKEN else '❌ NOT SET'}")
         print(f"   GEMINI_API_KEY:    {'✅ SET' if cls.GEMINI_API_KEY else '❌ NOT SET'}")
         print(f"   REVIEW_LANGUAGE:   {cls.REVIEW_LANGUAGE}")
-        print(f"   GUIDE_FILE_PATH:   {cls.GUIDE_FILE_PATH or '(default)'}")
         print("=" * 60)
         print()
