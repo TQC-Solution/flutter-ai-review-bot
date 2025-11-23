@@ -106,6 +106,12 @@ class GitHubClient:
                 "PR diff is empty. The PR may have no code changes."
             )
 
+        # Validate diff structure
+        validation_warnings = self._validate_diff_structure(diff_text)
+        if validation_warnings:
+            for warning in validation_warnings:
+                print(f"   ⚠️  {warning}")
+
         print(f"   ✅ Diff fetched successfully ({len(diff_text)} characters)")
         return diff_text
 
@@ -221,3 +227,47 @@ class GitHubClient:
             chunks.append(current_chunk.strip())
 
         return chunks
+
+    def _validate_diff_structure(self, diff_text: str) -> list[str]:
+        """Validate diff structure and detect potential issues.
+
+        Args:
+            diff_text: The diff text to validate
+
+        Returns:
+            List of warning messages (empty if no issues)
+        """
+        warnings = []
+        lines = diff_text.split('\n')
+
+        # Check for basic diff markers
+        has_diff_marker = any(line.startswith('diff --git ') for line in lines)
+        has_hunk_marker = any(line.startswith('@@') for line in lines)
+
+        if not has_diff_marker:
+            warnings.append("Diff structure warning: No 'diff --git' markers found")
+
+        if not has_hunk_marker:
+            warnings.append("Diff structure warning: No hunk markers (@@) found")
+
+        # Check for truncated diff (GitHub API may truncate large diffs)
+        last_lines = lines[-5:] if len(lines) > 5 else lines
+        has_proper_ending = any(
+            line.startswith('diff --git ') or
+            line.startswith('--') or
+            line.strip() == '' or
+            line.startswith('+') or
+            line.startswith('-')
+            for line in last_lines
+        )
+
+        # Check if diff ends abruptly (might be truncated)
+        if diff_text and not diff_text.endswith('\n'):
+            warnings.append("Diff may be truncated (no newline at end)")
+
+        # Count file changes
+        file_count = sum(1 for line in lines if line.startswith('diff --git '))
+        if file_count > 0:
+            print(f"   Found {file_count} file(s) in diff")
+
+        return warnings

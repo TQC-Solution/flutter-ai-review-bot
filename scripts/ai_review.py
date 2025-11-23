@@ -64,40 +64,109 @@ def main():
         print(f"❌ Failed to fetch PR diff: {e}")
         sys.exit(1)
 
-    # Step 2: Build review prompt
-    print("📝 Building review prompt...")
-    prompt = prompt_builder.build_prompt(diff)
+    # Step 2: Build review prompts (may be chunked for large PRs)
+    print("📝 Building review prompt(s)...")
+    prompt_chunks = prompt_builder.build_chunked_prompts(diff)
 
-    # Step 3: Generate AI review
-    try:
-        print("💬 Sending prompt to Gemini AI...")
-        review = gemini_client.generate_review(prompt)
-    except GeminiAPIError as e:
-        print(f"❌ Gemini call failed: {e}")
-
-        # Post a helpful fallback comment
-        fallback_comment = create_fallback_comment(
-            Config.REVIEW_LANGUAGE,
-            str(e)
-        )
+    # Step 3: Generate AI review for each chunk
+    all_reviews = []
+    for idx, (prompt, chunk) in enumerate(prompt_chunks):
         try:
-            github_client.post_comment(
-                pr_number,
-                Config.COMMENT_HEADER + fallback_comment
-            )
-        except Exception:
-            pass  # Silently fail if we can't post error comment
+            if len(prompt_chunks) > 1:
+                print(f"💬 Reviewing chunk {idx + 1}/{len(prompt_chunks)} "
+                      f"({len(chunk.files)} files: {', '.join(chunk.files[:3])}...)")
+            else:
+                print("💬 Sending prompt to Gemini AI...")
 
+            review = gemini_client.generate_review(prompt)
+            all_reviews.append({
+                'chunk_index': idx,
+                'files': chunk.files,
+                'review': review
+            })
+
+        except GeminiAPIError as e:
+            print(f"❌ Gemini call failed for chunk {idx + 1}: {e}")
+
+            # If first chunk fails, post fallback comment and exit
+            if idx == 0:
+                fallback_comment = create_fallback_comment(
+                    Config.REVIEW_LANGUAGE,
+                    str(e)
+                )
+                try:
+                    github_client.post_comment(
+                        pr_number,
+                        Config.COMMENT_HEADER + fallback_comment
+                    )
+                except Exception:
+                    pass
+                sys.exit(1)
+            else:
+                # For subsequent chunks, log error but continue
+                print(f"   ⚠️ Skipping chunk {idx + 1}, continuing with remaining chunks...")
+                continue
+
+    # Step 4: Merge reviews if multiple chunks
+    if len(all_reviews) == 0:
+        print("❌ No reviews generated")
         sys.exit(1)
 
-    # Step 4: Post review to PR
+    if len(all_reviews) == 1:
+        final_review = all_reviews[0]['review']
+    else:
+        print(f"🔗 Merging {len(all_reviews)} review chunks...")
+        final_review = _merge_reviews(all_reviews, Config.REVIEW_LANGUAGE)
+
+    # Step 5: Post review to PR
     try:
         print("✉️ Posting review comment(s) to PR...")
-        github_client.post_review_chunked(pr_number, review.strip())
+        github_client.post_review_chunked(pr_number, final_review.strip())
         print("✅ Posted AI review comment(s) successfully.")
     except GitHubAPIError as e:
         print(f"❌ Failed to post comment: {e}")
         sys.exit(1)
+
+
+def _merge_reviews(reviews: list, language: str) -> str:
+    """Merge multiple chunk reviews into single review.
+
+    Args:
+        reviews: List of review dicts with 'chunk_index', 'files', 'review'
+        language: Review language ('vietnamese' or 'english')
+
+    Returns:
+        Merged review text
+    """
+    if language == "english":
+        header = "## 📋 Code Review Summary\n\n"
+        header += f"_This PR was reviewed in {len(reviews)} parts due to size._\n\n"
+    else:
+        header = "## 📋 Tổng Hợp Code Review\n\n"
+        header += f"_PR này được review theo {len(reviews)} phần do kích thước lớn._\n\n"
+
+    merged = header
+
+    for review_data in reviews:
+        chunk_idx = review_data['chunk_index']
+        files = review_data['files']
+        review = review_data['review']
+
+        # Add separator between chunks
+        if language == "english":
+            merged += f"\n---\n\n### Part {chunk_idx + 1}: {', '.join(files[:3])}"
+            if len(files) > 3:
+                merged += f" and {len(files) - 3} more files"
+            merged += "\n\n"
+        else:
+            merged += f"\n---\n\n### Phần {chunk_idx + 1}: {', '.join(files[:3])}"
+            if len(files) > 3:
+                merged += f" và {len(files) - 3} files khác"
+            merged += "\n\n"
+
+        merged += review.strip() + "\n"
+
+    return merged
 
 
 if __name__ == '__main__':

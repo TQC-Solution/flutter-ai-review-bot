@@ -9,6 +9,7 @@ This action reviews Flutter code based on Clean Architecture principles, GetX be
 ## Features
 
 - ✅ **Smart Model Selection**: Automatically chooses the best available Gemini model (prioritizes Flash models for higher quota)
+- ✅ **Intelligent Chunking**: Automatically splits large PRs (>5 files, >30k chars) into reviewable chunks to ensure complete coverage
 - ✅ **Clean Architecture Review**: Validates layer dependencies and architectural patterns
 - ✅ **GetX Best Practices**: Checks controller lifecycle and instance management
 - ✅ **Type Safety**: Detects hardcoded assets and translation strings
@@ -138,13 +139,14 @@ flutter-ai-review-bot/
 ├── .github/workflows/
 │   └── ai-review.yml                   # Workflow for this repo (uses: ./)
 ├── scripts/
-│   ├── ai_review.py                    # Main orchestrator (104 lines)
+│   ├── ai_review.py                    # Main orchestrator (173 lines)
 │   ├── reviewer/                       # Modular package
 │   │   ├── __init__.py                # Package exports
 │   │   ├── config.py                  # Configuration management
 │   │   ├── github_client.py           # GitHub API operations
 │   │   ├── gemini_client.py           # Gemini AI integration
 │   │   ├── prompt_builder.py          # Prompt construction
+│   │   ├── diff_chunker.py            # Intelligent diff chunking (NEW)
 │   │   ├── utils.py                   # Helper functions
 │   │   ├── README.md                  # Module documentation
 │   │   └── ARCHITECTURE.md            # Architecture details
@@ -171,14 +173,15 @@ flutter-ai-review-bot/
   - Minimal, clean code
 
 #### Reviewer Package Modules
-1. **[config.py](scripts/reviewer/config.py)** (98 lines)
+1. **[config.py](scripts/reviewer/config.py)** (97 lines)
    - Environment variables management
    - Configuration validation
-   - Constants definition
+   - Constants definition (MAX_DIFF_LENGTH: 100k, max_output_tokens: 32k)
 
-2. **[github_client.py](scripts/reviewer/github_client.py)** (223 lines)
+2. **[github_client.py](scripts/reviewer/github_client.py)** (267 lines)
    - Fetch PR metadata and diffs
    - Post review comments
+   - Diff structure validation (NEW)
    - Handle long reviews with chunking
 
 3. **[gemini_client.py](scripts/reviewer/gemini_client.py)** (247 lines)
@@ -186,12 +189,19 @@ flutter-ai-review-bot/
    - API calls with retry logic
    - Rate limit handling
 
-4. **[prompt_builder.py](scripts/reviewer/prompt_builder.py)** (147 lines)
+4. **[prompt_builder.py](scripts/reviewer/prompt_builder.py)** (263 lines)
    - Load language-specific templates
    - Load coding guidelines
    - Build complete prompts
+   - Smart diff truncation (NEW)
+   - Chunked prompt generation (NEW)
 
-5. **[utils.py](scripts/reviewer/utils.py)** (88 lines)
+5. **[diff_chunker.py](scripts/reviewer/diff_chunker.py)** (169 lines) ⭐ **NEW**
+   - Intelligent diff splitting by file boundaries
+   - Auto-detect when chunking is needed
+   - Prevents "lost in the middle" attention degradation
+
+6. **[utils.py](scripts/reviewer/utils.py)** (88 lines)
    - Parse PR numbers
    - Format errors
    - Helper functions
@@ -275,6 +285,44 @@ The action automatically:
 
 To check your usage: [Google AI Studio Usage Dashboard](https://ai.google.dev/usage)
 
+## Large PR Handling
+
+**The action automatically handles large Pull Requests using intelligent chunking:**
+
+### When Chunking is Used
+- PRs with **>5 files** AND **>30,000 characters**
+- Automatically splits diff by file boundaries (never cuts mid-file)
+- Reviews each chunk separately, then merges results
+
+### Benefits
+- ✅ **Complete Coverage**: All files reviewed, even in large PRs
+- ✅ **No "Lost in the Middle"**: Avoids LLM attention degradation on long context
+- ✅ **Better Quality**: AI focuses on 2-4 files at a time for thorough review
+- ✅ **Transparent Progress**: Logs show "Reviewing chunk 2/5..." during processing
+
+### Example Output
+For large PRs, you'll see a merged review like:
+
+```markdown
+## 📋 Tổng Hợp Code Review
+
+_PR này được review theo 3 phần do kích thước lớn._
+
+---
+
+### Phần 1: lib/features/auth/login.dart, logout.dart
+🔴 Lỗi Nghiêm Trọng
+...
+
+---
+
+### Phần 2: lib/features/profile/user_profile.dart
+⚠️ Cảnh báo
+...
+```
+
+**Note**: Chunked reviews use multiple API calls (1 per chunk) but ensure no code is missed.
+
 ## Troubleshooting
 
 ### "GEMINI_API_KEY not set"
@@ -289,6 +337,13 @@ To check your usage: [Google AI Studio Usage Dashboard](https://ai.google.dev/us
 
 ### "Permission denied"
 - Ensure your API key has Gemini API enabled at [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+### "AI says file doesn't exist" or "Missing code review"
+These issues have been fixed in the latest version:
+- **Smart Truncation**: Diff is cut at file boundaries, not mid-file
+- **Intelligent Chunking**: Large PRs (>5 files, >30k chars) automatically split for complete coverage
+- **Increased Limits**: Now handles up to 100k characters (was 12k)
+- If you still experience issues, check the GitHub Actions logs for chunking information
 
 ## License
 

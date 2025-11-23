@@ -17,9 +17,12 @@ class Config:
     REVIEW_LANGUAGE = os.getenv("REVIEW_LANGUAGE", "vietnamese").lower()
 
     # Constants
-    MAX_DIFF_LENGTH = 12000  # Limit diff size to avoid huge token payloads
+    MAX_DIFF_LENGTH = 100000  # Limit diff size to avoid huge token payloads (increased from 12k)
     MAX_COMMENT_LENGTH = 60000  # GitHub has 65,536 char limit, use 60k for safety
     COMMENT_HEADER = "🤖 **AI Code Review - Flutter (Gemini)**\n\n"
+
+    # Diff processing settings
+    WARN_DIFF_TRUNCATED = True  # Warn in prompt if diff was truncated
 
     # Gemini model preferences (ordered by priority)
     # Flash models have higher quota (15 RPM) vs Pro models (2 RPM)
@@ -50,7 +53,7 @@ class Config:
         "temperature": 0.7,
         "top_p": 0.95,
         "top_k": 40,
-        "max_output_tokens": 8192,
+        "max_output_tokens": 32000,  # Increased from 8192 to handle large reviews
     }
 
     # Retry configuration

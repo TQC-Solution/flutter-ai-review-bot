@@ -6,6 +6,7 @@ from .config import Config
 from .github_client import GitHubClient, GitHubAPIError
 from .gemini_client import GeminiClient, GeminiAPIError
 from .prompt_builder import PromptBuilder
+from .diff_chunker import DiffChunker, DiffChunk
 from .utils import (
     get_pr_number_from_ref,
     format_validation_errors,
@@ -20,6 +21,8 @@ __all__ = [
     "GeminiClient",
     "GeminiAPIError",
     "PromptBuilder",
+    "DiffChunker",
+    "DiffChunk",
     "get_pr_number_from_ref",
     "format_validation_errors",
     "create_fallback_comment",
