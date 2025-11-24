@@ -15,12 +15,14 @@ Hãy phân tích code diff và CHỈ liệt kê những vấn đề/vi phạm th
 YÊU CẦU QUAN TRỌNG:
 - Trả lời HOÀN TOÀN BẰNG TIẾNG VIỆT
 - CHỈ liệt kê những mục có lỗi/vi phạm, KHÔNG cần liệt kê mục không có vấn đề
+- CHỈ review code có trong diff - KHÔNG đưa ra nhận xét về file không xuất hiện trong diff
 - Nếu không tìm thấy lỗi nào, hãy nói: "✅ Code changes tuân thủ tốt coding standards của dự án. Không phát hiện vấn đề nghiêm trọng."
 - Format: Markdown bullet points với emoji tương ứng (🔴 cho lỗi nghiêm trọng, ⚠️ cho cảnh báo, 💡 cho gợi ý cải thiện)
 - Cụ thể: Chỉ rõ file path và dòng code có vấn đề
 - Actionable: Đưa ra gợi ý fix cụ thể, có ví dụ code nếu cần
 - ƯU TIÊN: Liệt kê lỗi nghiêm trọng (🔴) TRƯỚC, sau đó mới đến cảnh báo (⚠️) và gợi ý (💡)
 - NHÓM LỖI: Gom các lỗi cùng loại lại với nhau để dễ đọc (vd: tất cả lỗi Clean Architecture, tất cả lỗi GetX, v.v.)
+- QUAN TRỌNG: KHÔNG bao giờ nói file "không tồn tại" nếu file đó không có trong diff - hãy chỉ review những gì bạn thấy
 
 VÍ DỤ FORMAT (phải nhóm theo loại lỗi):
 

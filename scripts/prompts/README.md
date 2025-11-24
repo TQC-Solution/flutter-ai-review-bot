@@ -11,7 +11,7 @@ This directory contains AI review prompt templates for different languages.
 
 Each prompt template uses the following placeholders:
 
-- `{coding_rules}` - Replaced with content from the coding guide file (FLUTTER_CODE_REVIEW_GUIDE.md)
+- `{coding_rules}` - Replaced with combined content from all rule files in `scripts/rule/` directory
 - `{code_diff}` - Replaced with the actual code diff from the pull request
 
 ## How to Customize

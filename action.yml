@@ -13,10 +13,6 @@ inputs:
   github-token:
     description: 'GitHub token for posting PR comments (use secrets.GITHUB_TOKEN)'
     required: true
-  guide-file-path:
-    description: 'Path to custom Flutter code review guide (optional)'
-    required: false
-    default: 'scripts/FLUTTER_CODE_REVIEW_GUIDE.md'
   review-language:
     description: 'Language for code review comments: "vietnamese" or "english"'
     required: false
@@ -43,6 +39,5 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_REF: ${{ github.ref }}
-        GUIDE_FILE_PATH: ${{ inputs.guide-file-path }}
         REVIEW_LANGUAGE: ${{ inputs.review-language }}
       run: python ${{ github.action_path }}/scripts/ai_review.py

@@ -1,5 +1,7 @@
 # Flutter AI Code Reviewer (Gemini)
 
+> **🎉 NEW: v2.0 - Refactored Architecture!** The codebase has been restructured from a monolithic 486-line script into 6 specialized modules for better maintainability and extensibility. See [Architecture](#architecture-refactored-v20) and [Refactoring Guide](REFACTORING.md) for details.
+
 Automated GitHub Pull Request reviewer for **Flutter/Dart** projects using **Google Gemini AI**.
 
 This action reviews Flutter code based on Clean Architecture principles, GetX best practices, and comprehensive coding standards. It posts **one consolidated AI review comment** on each Pull Request with specific, actionable feedback.
@@ -7,11 +9,12 @@ This action reviews Flutter code based on Clean Architecture principles, GetX be
 ## Features
 
 - ✅ **Smart Model Selection**: Automatically chooses the best available Gemini model (prioritizes Flash models for higher quota)
+- ✅ **Intelligent Chunking**: Automatically splits large PRs (>5 files, >30k chars) into reviewable chunks to ensure complete coverage
 - ✅ **Clean Architecture Review**: Validates layer dependencies and architectural patterns
 - ✅ **GetX Best Practices**: Checks controller lifecycle and instance management
 - ✅ **Type Safety**: Detects hardcoded assets and translation strings
 - ✅ **Multi-language Support**: Review comments in Vietnamese or English
-- ✅ **Customizable Guide**: Use your own coding standards guide
+- ✅ **Modular Rule System**: Coding standards organized in separate rule files for easy maintenance
 - ✅ **Single Consolidated Comment**: Posts one comprehensive review per PR to minimize noise
 - ✅ **Automatic Retry**: Handles rate limits with exponential backoff
 
@@ -57,7 +60,6 @@ jobs:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           review-language: 'vietnamese'  # Optional: 'vietnamese' or 'english' (default: vietnamese)
-          # guide-file-path: 'docs/CODING_STANDARDS.md'  # Optional: custom guide file path
 ```
 
 ### Setup
@@ -84,7 +86,6 @@ jobs:
 | `gemini-api-key` | Yes | - | Google Gemini API key for AI code review |
 | `github-token` | Yes | - | GitHub token (use `${{ secrets.GITHUB_TOKEN }}`) |
 | `review-language` | No | `vietnamese` | Review comment language: `vietnamese` or `english` |
-| `guide-file-path` | No | `scripts/FLUTTER_CODE_REVIEW_GUIDE.md` | Path to custom coding standards guide |
 
 ### Examples
 
@@ -96,16 +97,6 @@ jobs:
     gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
     review-language: 'english'
-```
-
-#### Custom Coding Guide
-
-```yaml
-- uses: vincetran/flutter-ai-review-bot@main
-  with:
-    gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-    guide-file-path: 'docs/my-custom-guide.md'
 ```
 
 ## Review Criteria
@@ -148,15 +139,85 @@ flutter-ai-review-bot/
 ├── .github/workflows/
 │   └── ai-review.yml                   # Workflow for this repo (uses: ./)
 ├── scripts/
-│   ├── ai_review.py                    # Main Python script
+│   ├── ai_review.py                    # Main orchestrator (173 lines)
+│   ├── reviewer/                       # Modular package
+│   │   ├── __init__.py                # Package exports
+│   │   ├── config.py                  # Configuration management
+│   │   ├── github_client.py           # GitHub API operations
+│   │   ├── gemini_client.py           # Gemini AI integration
+│   │   ├── prompt_builder.py          # Prompt construction
+│   │   ├── diff_chunker.py            # Intelligent diff chunking (NEW)
+│   │   ├── utils.py                   # Helper functions
+│   │   ├── README.md                  # Module documentation
+│   │   └── ARCHITECTURE.md            # Architecture details
 │   ├── requirements.txt                # Python dependencies
-│   ├── FLUTTER_CODE_REVIEW_GUIDE.md   # Coding standards guide
+│   ├── rule/                           # Modular coding rules
+│   │   ├── CLEAN_ARCHITECTURE_RULES.md # Clean Architecture guidelines
+│   │   ├── GETX_CONTROLLER_RULES.md    # GetX best practices
+│   │   └── CODING_RULES.md             # General coding standards
 │   └── prompts/                        # AI prompt templates
 │       ├── review_prompt_vi.txt        # Vietnamese prompt
 │       ├── review_prompt_en.txt        # English prompt
 │       └── README.md                   # Prompt documentation
 └── README.md
 ```
+
+### Architecture (Refactored v2.0)
+
+**The project has been refactored from a monolithic 486-line script into 6 specialized modules:**
+
+#### Main Orchestrator
+- **[ai_review.py](scripts/ai_review.py)** (104 lines, **-78.6%** reduction)
+  - Coordinates all modules
+  - Handles main workflow
+  - Minimal, clean code
+
+#### Reviewer Package Modules
+1. **[config.py](scripts/reviewer/config.py)** (97 lines)
+   - Environment variables management
+   - Configuration validation
+   - Constants definition (MAX_DIFF_LENGTH: 100k, max_output_tokens: 32k)
+
+2. **[github_client.py](scripts/reviewer/github_client.py)** (267 lines)
+   - Fetch PR metadata and diffs
+   - Post review comments
+   - Diff structure validation (NEW)
+   - Handle long reviews with chunking
+
+3. **[gemini_client.py](scripts/reviewer/gemini_client.py)** (247 lines)
+   - Model selection and fallback
+   - API calls with retry logic
+   - Rate limit handling
+
+4. **[prompt_builder.py](scripts/reviewer/prompt_builder.py)** (263 lines)
+   - Load language-specific templates
+   - Load coding guidelines
+   - Build complete prompts
+   - Smart diff truncation (NEW)
+   - Chunked prompt generation (NEW)
+
+5. **[diff_chunker.py](scripts/reviewer/diff_chunker.py)** (169 lines) ⭐ **NEW**
+   - Intelligent diff splitting by file boundaries
+   - Auto-detect when chunking is needed
+   - Prevents "lost in the middle" attention degradation
+
+6. **[utils.py](scripts/reviewer/utils.py)** (88 lines)
+   - Parse PR numbers
+   - Format errors
+   - Helper functions
+
+#### Benefits of New Architecture
+- ✅ **Modular**: Each module has a single responsibility
+- ✅ **Testable**: Can unit test each module independently
+- ✅ **Maintainable**: Easy to find and fix issues
+- ✅ **Extensible**: Easy to add new AI providers or features
+- ✅ **Backward Compatible**: No changes needed to existing workflows
+
+**Learn More:**
+- 📖 [Quick Start Guide](QUICK_START.md) - Get started with the refactored code
+- 📖 [Refactoring Details](REFACTORING.md) - Detailed before/after comparison
+- 📖 [Module Documentation](scripts/reviewer/README.md) - Deep dive into each module
+- 📖 [Architecture Diagrams](scripts/reviewer/ARCHITECTURE.md) - Visual architecture guide
 
 ### Local Testing
 
@@ -175,17 +236,18 @@ pip install -r scripts/requirements.txt
 python scripts/ai_review.py
 ```
 
-### Customizing the Review Guide
+### Customizing the Review Rules
 
-Create your own coding standards guide in Markdown format:
+The review rules are organized in modular files in `scripts/rule/`:
 
-1. Create a file (e.g., `docs/MY_GUIDE.md`)
-2. Use it in your workflow:
-   ```yaml
-   guide-file-path: 'docs/MY_GUIDE.md'
-   ```
+- **[CLEAN_ARCHITECTURE_RULES.md](scripts/rule/CLEAN_ARCHITECTURE_RULES.md)** - Clean Architecture principles and layer dependencies
+- **[GETX_CONTROLLER_RULES.md](scripts/rule/GETX_CONTROLLER_RULES.md)** - GetX state management best practices
+- **[CODING_RULES.md](scripts/rule/CODING_RULES.md)** - General coding standards (naming, assets, i18n, error handling)
 
-See [scripts/FLUTTER_CODE_REVIEW_GUIDE.md](scripts/FLUTTER_CODE_REVIEW_GUIDE.md) for an example.
+**To customize:**
+1. Edit the existing rule files to match your project's standards
+2. Add new rule files to `scripts/rule/` (they will be automatically loaded)
+3. All `.md` files in the `rule/` directory are combined and used for code review
 
 ### Customizing Review Prompts
 
@@ -223,6 +285,44 @@ The action automatically:
 
 To check your usage: [Google AI Studio Usage Dashboard](https://ai.google.dev/usage)
 
+## Large PR Handling
+
+**The action automatically handles large Pull Requests using intelligent chunking:**
+
+### When Chunking is Used
+- PRs with **>5 files** AND **>30,000 characters**
+- Automatically splits diff by file boundaries (never cuts mid-file)
+- Reviews each chunk separately, then merges results
+
+### Benefits
+- ✅ **Complete Coverage**: All files reviewed, even in large PRs
+- ✅ **No "Lost in the Middle"**: Avoids LLM attention degradation on long context
+- ✅ **Better Quality**: AI focuses on 2-4 files at a time for thorough review
+- ✅ **Transparent Progress**: Logs show "Reviewing chunk 2/5..." during processing
+
+### Example Output
+For large PRs, you'll see a merged review like:
+
+```markdown
+## 📋 Tổng Hợp Code Review
+
+_PR này được review theo 3 phần do kích thước lớn._
+
+---
+
+### Phần 1: lib/features/auth/login.dart, logout.dart
+🔴 Lỗi Nghiêm Trọng
+...
+
+---
+
+### Phần 2: lib/features/profile/user_profile.dart
+⚠️ Cảnh báo
+...
+```
+
+**Note**: Chunked reviews use multiple API calls (1 per chunk) but ensure no code is missed.
+
 ## Troubleshooting
 
 ### "GEMINI_API_KEY not set"
@@ -237,6 +337,13 @@ To check your usage: [Google AI Studio Usage Dashboard](https://ai.google.dev/us
 
 ### "Permission denied"
 - Ensure your API key has Gemini API enabled at [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+### "AI says file doesn't exist" or "Missing code review"
+These issues have been fixed in the latest version:
+- **Smart Truncation**: Diff is cut at file boundaries, not mid-file
+- **Intelligent Chunking**: Large PRs (>5 files, >30k chars) automatically split for complete coverage
+- **Increased Limits**: Now handles up to 100k characters (was 12k)
+- If you still experience issues, check the GitHub Actions logs for chunking information
 
 ## License
 

@@ -15,12 +15,14 @@ Analyze the code diff and ONLY list actual issues/violations found based on thes
 IMPORTANT REQUIREMENTS:
 - Respond ENTIRELY IN ENGLISH
 - ONLY list items with errors/violations, DO NOT list items without issues
+- ONLY review code present in the diff - DO NOT comment on files not shown in the diff
 - If no errors found, say: "✅ Code changes comply well with the project's coding standards. No serious issues detected."
 - Format: Markdown bullet points with corresponding emojis (🔴 for critical errors, ⚠️ for warnings, 💡 for improvement suggestions)
 - Specific: Point out file path and problematic code line
 - Actionable: Provide specific fix suggestions with code examples if needed
 - PRIORITY: List critical errors (🔴) FIRST, then warnings (⚠️), then suggestions (💡)
 - GROUP ERRORS: Group similar errors together for better readability (e.g., all Clean Architecture issues, all GetX issues, etc.)
+- IMPORTANT: NEVER say a file "does not exist" if it's not in the diff - only review what you can see
 
 EXAMPLE FORMAT (must group by error type):
 
