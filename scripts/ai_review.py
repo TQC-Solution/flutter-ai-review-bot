@@ -107,6 +107,30 @@ def main():
                 print(f"   ⚠️ Skipping chunk {idx + 1}, continuing with remaining chunks...")
                 continue
 
+        except Exception as e:
+            # Catch any unexpected errors with full traceback
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"❌ Unexpected error in chunk {idx + 1}:")
+            print(error_details)
+
+            if idx == 0:
+                fallback_comment = create_fallback_comment(
+                    Config.REVIEW_LANGUAGE,
+                    f"Unexpected error: {str(e)}\n\nTraceback:\n{error_details}"
+                )
+                try:
+                    github_client.post_comment(
+                        pr_number,
+                        Config.COMMENT_HEADER + fallback_comment
+                    )
+                except Exception:
+                    pass
+                sys.exit(1)
+            else:
+                print(f"   ⚠️ Skipping chunk {idx + 1}, continuing with remaining chunks...")
+                continue
+
     # Step 4: Merge reviews if multiple chunks
     if len(all_reviews) == 0:
         print("❌ No reviews generated")
