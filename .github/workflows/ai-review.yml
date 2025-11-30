@@ -1,26 +1,19 @@
-# ==============================================================================
-# Example workflow for using Flutter AI Code Reviewer in YOUR repository
-# ==============================================================================
-#
-# To use this in your Flutter/Dart project:
-# 1. Copy this file to: .github/workflows/ai-review.yml
-# 2. Add GEMINI_API_KEY to your repository secrets
-# 3. Customize the settings below as needed
-# 4. Create a pull request to test!
-#
-# ==============================================================================
+# This is a sample workflow file for AI Code Review
+# Copy this file to your project's .github/workflows/ directory
 
-name: Gemini AI Code Reviewer (Flutter)
+name: AI Code Review
 
+# Trigger: When a PR is opened, updated, or reopened on main or dev branch
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main, dev]
 
+# Required permissions for the action
 permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+  contents: read           # Read repository contents
+  pull-requests: write     # Post comments on pull requests
+  issues: write           # Post comments (backup method)
 
 jobs:
   ai_review:
@@ -28,14 +21,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the code
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Run Gemini AI Code Reviewer
-        uses: ./  # Use local action for testing in this repo
-        #vincetran/flutter-ai-review-bot@main
+      # Step 2: Run the AI Code Reviewer
+      - name: Run OpenRouter AI Code Reviewer
+        uses: TQC-Solution/flutter-ai-review-bot@main
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          # OpenRouter API key (set this in repository secrets)
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+
+          # GitHub token (automatically provided by GitHub Actions)
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          review-language: 'vietnamese'  # Optional: 'vietnamese' or 'english' (default: vietnamese)
-          # guide-file-path: 'docs/CODING_STANDARDS.md'  # Optional: custom guide file path
+
+          # Review language: 'vietnamese' or 'english' (default: vietnamese)
+          review-language: 'vietnamese'

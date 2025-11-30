@@ -73,6 +73,14 @@ class GitHubClient:
                 raise GitHubAPIError(f"GitHub API error ({response.status_code}): {e}")
 
         pr_data = response.json()
+
+        # Validate response is a dict
+        if not isinstance(pr_data, dict):
+            raise GitHubAPIError(
+                f"Unexpected PR data format: expected dict, got {type(pr_data).__name__}. "
+                f"Response: {pr_data}"
+            )
+
         pr_state = pr_data.get("state", "unknown")
         pr_title = pr_data.get("title", "N/A")
 

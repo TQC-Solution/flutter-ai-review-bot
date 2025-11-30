@@ -60,14 +60,14 @@ def create_fallback_comment(language: str, error_message: str) -> str:
     """
     if language == "english":
         return (
-            "⚠️ AI review could not be generated due to configuration or SDK error.\n\n"
-            "Please ensure GEMINI_API_KEY is set and google-generativeai is installed.\n\n"
+            "⚠️ AI review could not be generated due to configuration or API error.\n\n"
+            "Please ensure OPENROUTER_API_KEY is set correctly.\n\n"
             f"Error details:\n```\n{error_message}\n```"
         )
     else:
         return (
-            "⚠️ AI review không thể tạo được do lỗi cấu hình hoặc SDK.\n\n"
-            "Đảm bảo GEMINI_API_KEY đã được set và google-generativeai đã được cài đặt.\n\n"
+            "⚠️ AI review không thể tạo được do lỗi cấu hình hoặc API.\n\n"
+            "Đảm bảo OPENROUTER_API_KEY đã được set đúng.\n\n"
             f"Chi tiết lỗi:\n```\n{error_message}\n```"
         )
 
