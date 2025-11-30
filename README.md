@@ -1,14 +1,17 @@
-# Flutter AI Code Reviewer (Gemini)
+# Flutter AI Code Reviewer (OpenRouter)
 
-> **🎉 NEW: v2.0 - Refactored Architecture!** The codebase has been restructured from a monolithic 486-line script into 6 specialized modules for better maintainability and extensibility. See [Architecture](#architecture-refactored-v20) and [Refactoring Guide](REFACTORING.md) for details.
+> **🎉 NEW: v3.0 - OpenRouter Integration!** Now supports multiple AI providers through OpenRouter API. Easily switch between models like Grok, Claude, GPT-4, Gemini, and more by just changing a config parameter. No more vendor lock-in!
 
-Automated GitHub Pull Request reviewer for **Flutter/Dart** projects using **Google Gemini AI**.
+Automated GitHub Pull Request reviewer for **Flutter/Dart** projects using **OpenRouter AI** (supports 200+ models).
 
 This action reviews Flutter code based on Clean Architecture principles, GetX best practices, and comprehensive coding standards. It posts **one consolidated AI review comment** on each Pull Request with specific, actionable feedback.
 
 ## Features
 
-- ✅ **Smart Model Selection**: Automatically chooses the best available Gemini model (prioritizes Flash models for higher quota)
+- ✅ **200+ AI Models Support**: Use any model from OpenRouter (Grok, Claude, GPT-4, Gemini, Llama, Mistral, etc.)
+- ✅ **Easy Model Switching**: Change AI provider with just one config parameter - no code changes needed
+- ✅ **Free & Paid Options**: Choose from free models (Grok 4.1, Gemini 2.0) or premium ones (Claude 3.5, GPT-4)
+- ✅ **Reasoning Support**: Enable advanced reasoning for supported models (e.g., Grok 4.1)
 - ✅ **Intelligent Chunking**: Automatically splits large PRs (>5 files, >30k chars) into reviewable chunks to ensure complete coverage
 - ✅ **Clean Architecture Review**: Validates layer dependencies and architectural patterns
 - ✅ **GetX Best Practices**: Checks controller lifecycle and instance management
@@ -54,28 +57,48 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Run Gemini AI Code Reviewer
+      - name: Run OpenRouter AI Code Reviewer
         uses: vincetran/flutter-ai-review-bot@main  # Or use a specific version tag
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           review-language: 'vietnamese'  # Optional: 'vietnamese' or 'english' (default: vietnamese)
 ```
 
 ### Setup
 
-1. **Get a Gemini API Key**
-   - Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-   - Create a new API key
+1. **Get an OpenRouter API Key**
+   - Visit [OpenRouter Keys](https://openrouter.ai/keys)
+   - Sign up and create a new API key
+   - Add credits if using paid models (many free models available!)
 
 2. **Add GitHub Secret**
    - Go to your repository **Settings → Secrets and variables → Actions**
    - Click **New repository secret**
-   - Name: `GEMINI_API_KEY`
-   - Value: Your Gemini API key from step 1
+   - Name: `OPENROUTER_API_KEY`
+   - Value: Your OpenRouter API key from step 1
 
 3. **Create a Pull Request**
    - The action will automatically run and post a review comment
+
+### Model Configuration
+
+**Note**: The AI model is controlled by this project's maintainers. Users cannot change the model through workflow configuration.
+
+**Current Model**: `x-ai/grok-4.1-fast:free` (Free, fast, supports reasoning)
+
+To change the model, project maintainers should edit [`scripts/reviewer/config.py`](scripts/reviewer/config.py):
+
+```python
+# Line 28 in config.py
+OPENROUTER_MODEL = "x-ai/grok-4.1-fast:free"  # Change this value
+
+# Available options:
+# Free: "x-ai/grok-4.1-fast:free", "google/gemini-2.0-flash-exp:free"
+# Paid: "anthropic/claude-3.5-sonnet", "openai/gpt-4-turbo"
+```
+
+See [OpenRouter Model List](https://openrouter.ai/models) for all available models and pricing.
 
 ## Configuration Options
 
@@ -83,7 +106,7 @@ jobs:
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `gemini-api-key` | Yes | - | Google Gemini API key for AI code review |
+| `openrouter-api-key` | Yes | - | OpenRouter API key for AI code review |
 | `github-token` | Yes | - | GitHub token (use `${{ secrets.GITHUB_TOKEN }}`) |
 | `review-language` | No | `vietnamese` | Review comment language: `vietnamese` or `english` |
 
@@ -94,7 +117,7 @@ jobs:
 ```yaml
 - uses: vincetran/flutter-ai-review-bot@main
   with:
-    gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+    openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
     review-language: 'english'
 ```
@@ -184,8 +207,10 @@ flutter-ai-review-bot/
    - Diff structure validation (NEW)
    - Handle long reviews with chunking
 
-3. **[gemini_client.py](scripts/reviewer/gemini_client.py)** (247 lines)
-   - Model selection and fallback
+3. **[openrouter_client.py](scripts/reviewer/openrouter_client.py)** (NEW in v3.0)
+   - OpenRouter API integration
+   - Support for 200+ models
+   - Reasoning support for advanced models
    - API calls with retry logic
    - Rate limit handling
 
@@ -226,14 +251,16 @@ flutter-ai-review-bot/
 export GITHUB_REF='refs/pull/1/merge'
 export GITHUB_TOKEN='your_github_token'
 export GITHUB_REPOSITORY='owner/repo'
-export GEMINI_API_KEY='your_gemini_api_key'
-export REVIEW_LANGUAGE='vietnamese'
+export OPENROUTER_API_KEY='your_openrouter_api_key'
+export REVIEW_LANGUAGE='vietnamese'  # Optional
 
 # Install dependencies
 pip install -r scripts/requirements.txt
 
 # Run the script
 python scripts/ai_review.py
+
+# Note: Model is configured in scripts/reviewer/config.py
 ```
 
 ### Customizing the Review Rules
@@ -272,18 +299,22 @@ Bạn là một friendly senior Flutter/Dart engineer...
 
 See [scripts/prompts/README.md](scripts/prompts/README.md) for detailed documentation.
 
-## API Quotas
+## API Quotas & Pricing
 
-**Gemini Free Tier Limits:**
-- Flash models: 15 requests/minute
-- Pro models: 2 requests/minute
+**OpenRouter Pricing:**
+- **Free Models**: Many models available at no cost (Grok 4.1, Gemini 2.0 Flash, Llama 3.2, etc.)
+- **Paid Models**: Pay-per-token pricing, usually very affordable
+  - Example: Claude 3.5 Sonnet ~$0.01-0.02 per review
+  - Example: GPT-4 Turbo ~$0.02-0.05 per review
 
 The action automatically:
-- Prioritizes Flash models for higher quota
 - Retries with exponential backoff on rate limits
-- Falls back to alternative models if quota exceeded
+- Handles API errors gracefully
+- Supports reasoning for better quality reviews
 
-To check your usage: [Google AI Studio Usage Dashboard](https://ai.google.dev/usage)
+**Check your usage**: [OpenRouter Dashboard](https://openrouter.ai/activity)
+
+**Model comparison**: See [OpenRouter Models](https://openrouter.ai/models) for detailed pricing and specs
 
 ## Large PR Handling
 
@@ -325,18 +356,23 @@ _PR này được review theo 3 phần do kích thước lớn._
 
 ## Troubleshooting
 
-### "GEMINI_API_KEY not set"
-- Make sure you added the secret in repository Settings → Secrets
+### "OPENROUTER_API_KEY not set"
+- Make sure you added the secret in repository Settings → Secrets → Actions
+
+### "Invalid API key (401)"
+- Verify your OpenRouter API key at [OpenRouter Keys](https://openrouter.ai/keys)
+- Make sure the secret name is exactly `OPENROUTER_API_KEY`
+
+### "Insufficient credits (402)"
+- Add credits at [OpenRouter Credits](https://openrouter.ai/credits)
+- Or switch to a free model (see [Available Models](#available-models))
 
 ### "PR diff is empty"
 - The PR has no code changes to review
 
-### "Quota exceeded"
-- Wait 60 seconds and retry
-- Consider upgrading your Gemini API plan
-
-### "Permission denied"
-- Ensure your API key has Gemini API enabled at [Google AI Studio](https://aistudio.google.com/app/apikey)
+### "Rate limit exceeded (429)"
+- Wait a moment and retry (action auto-retries with backoff)
+- Check your rate limits at [OpenRouter Settings](https://openrouter.ai/settings/limits)
 
 ### "AI says file doesn't exist" or "Missing code review"
 These issues have been fixed in the latest version:
@@ -356,6 +392,28 @@ Contributions welcome! Please open an issue or PR.
 ## Credits
 
 Built with:
-- [Google Generative AI SDK](https://github.com/google/generative-ai-python)
+- [OpenRouter API](https://openrouter.ai/) - Unified access to 200+ AI models
 - [GitHub Actions](https://github.com/features/actions)
+
+## Migration from Gemini
+
+If you're upgrading from the Gemini version (v2.x), just update your workflow:
+
+**Old (Gemini):**
+```yaml
+- uses: vincetran/flutter-ai-review-bot@v2
+  with:
+    gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**New (OpenRouter):**
+```yaml
+- uses: vincetran/flutter-ai-review-bot@main
+  with:
+    openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Note**: Model selection is now controlled by project maintainers in `config.py`, not by workflow configuration. This ensures consistent review quality across all PRs.
 

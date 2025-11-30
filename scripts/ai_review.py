@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI reviewer script for GitHub Actions using Google Gemini.
+"""AI reviewer script for GitHub Actions using OpenRouter AI.
 
 This is the main orchestrator that coordinates all components:
 - Configuration validation
@@ -11,7 +11,7 @@ This is the main orchestrator that coordinates all components:
 For detailed implementation, see the reviewer package modules:
 - config.py: Configuration and environment variables
 - github_client.py: GitHub API operations
-- gemini_client.py: Gemini AI integration
+- openrouter_client.py: OpenRouter AI integration
 - prompt_builder.py: Prompt construction
 - utils.py: Helper functions
 """
@@ -20,7 +20,7 @@ import sys
 
 from reviewer.config import Config
 from reviewer.github_client import GitHubClient, GitHubAPIError
-from reviewer.gemini_client import GeminiClient, GeminiAPIError
+from reviewer.openrouter_client import OpenRouterClient, OpenRouterAPIError
 from reviewer.prompt_builder import PromptBuilder
 from reviewer.utils import (
     get_pr_number_from_ref,
@@ -53,7 +53,7 @@ def main():
 
     # Initialize clients
     github_client = GitHubClient(Config.GITHUB_REPOSITORY, Config.GITHUB_TOKEN)
-    gemini_client = GeminiClient(Config.GEMINI_API_KEY)
+    openrouter_client = OpenRouterClient(Config.OPENROUTER_API_KEY)
     prompt_builder = PromptBuilder(Config.REVIEW_LANGUAGE)
 
     # Step 1: Fetch PR diff
@@ -76,17 +76,17 @@ def main():
                 print(f"💬 Reviewing chunk {idx + 1}/{len(prompt_chunks)} "
                       f"({len(chunk.files)} files: {', '.join(chunk.files[:3])}...)")
             else:
-                print("💬 Sending prompt to Gemini AI...")
+                print("💬 Sending prompt to OpenRouter AI...")
 
-            review = gemini_client.generate_review(prompt)
+            review = openrouter_client.generate_review(prompt)
             all_reviews.append({
                 'chunk_index': idx,
                 'files': chunk.files,
                 'review': review
             })
 
-        except GeminiAPIError as e:
-            print(f"❌ Gemini call failed for chunk {idx + 1}: {e}")
+        except OpenRouterAPIError as e:
+            print(f"❌ OpenRouter call failed for chunk {idx + 1}: {e}")
 
             # If first chunk fails, post fallback comment and exit
             if idx == 0:

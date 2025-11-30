@@ -1,5 +1,5 @@
-name: 'Flutter AI Code Reviewer (Gemini)'
-description: 'Automated Flutter/Dart code review using Google Gemini AI with Clean Architecture standards'
+name: 'Flutter AI Code Reviewer (OpenRouter)'
+description: 'Automated Flutter/Dart code review using OpenRouter AI with Clean Architecture standards'
 author: 'vincetran'
 
 branding:
@@ -7,8 +7,8 @@ branding:
   color: 'blue'
 
 inputs:
-  gemini-api-key:
-    description: 'Google Gemini API key for AI code review'
+  openrouter-api-key:
+    description: 'OpenRouter API key for AI code review'
     required: true
   github-token:
     description: 'GitHub token for posting PR comments (use secrets.GITHUB_TOKEN)'
@@ -32,10 +32,10 @@ runs:
         python -m pip install --upgrade pip
         pip install -r ${{ github.action_path }}/scripts/requirements.txt
 
-    - name: Run Gemini AI Code Reviewer
+    - name: Run OpenRouter AI Code Reviewer
       shell: bash
       env:
-        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_REF: ${{ github.ref }}
