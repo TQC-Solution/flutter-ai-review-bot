@@ -168,6 +168,13 @@ class OpenRouterClient:
                 # Parse response
                 response_data = response.json()
 
+                # Validate response_data is a dict
+                if not isinstance(response_data, dict):
+                    raise OpenRouterAPIError(
+                        f"Invalid API response format: expected dict, got {type(response_data).__name__}. "
+                        f"Response: {response_data}"
+                    )
+
                 if "error" in response_data:
                     error_msg = response_data["error"]
                     if isinstance(error_msg, dict):
