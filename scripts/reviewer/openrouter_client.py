@@ -168,6 +168,9 @@ class OpenRouterClient:
                 # Parse response
                 response_data = response.json()
 
+                # Debug logging
+                print(f"   DEBUG: Response type: {type(response_data).__name__}")
+
                 # Validate response_data is a dict
                 if not isinstance(response_data, dict):
                     raise OpenRouterAPIError(
@@ -176,15 +179,25 @@ class OpenRouterClient:
                     )
 
                 if "error" in response_data:
-                    error_msg = response_data["error"]
-                    if isinstance(error_msg, dict):
-                        error_msg = error_msg.get("message", str(error_msg))
+                    error_data = response_data["error"]
+                    # Handle different error formats: dict, list, or string
+                    if isinstance(error_data, dict):
+                        error_msg = error_data.get("message", str(error_data))
+                    elif isinstance(error_data, list):
+                        # If error is a list, convert to string representation
+                        error_msg = "; ".join(str(e) for e in error_data)
+                    else:
+                        error_msg = str(error_data)
                     raise OpenRouterAPIError(f"API error: {error_msg}")
 
                 # Extract content from response
                 if "choices" not in response_data or len(response_data["choices"]) == 0:
                     print(f"   ⚠️  {model_name} returned no choices")
                     return None
+
+                # Debug logging
+                print(f"   DEBUG: Choices type: {type(response_data['choices']).__name__}")
+                print(f"   DEBUG: First choice type: {type(response_data['choices'][0]).__name__}")
 
                 # Get first choice - handle both dict and list formats
                 first_choice = response_data["choices"][0]
@@ -212,8 +225,12 @@ class OpenRouterClient:
 
                 # Log reasoning details if available
                 if "reasoning_details" in message:
-                    print(f"   🧠 Reasoning tokens used: "
-                          f"{message['reasoning_details'].get('tokens', 'N/A')}")
+                    reasoning_details = message["reasoning_details"]
+                    if isinstance(reasoning_details, dict):
+                        print(f"   🧠 Reasoning tokens used: "
+                              f"{reasoning_details.get('tokens', 'N/A')}")
+                    else:
+                        print(f"   🧠 Reasoning details: {reasoning_details}")
 
                 return content
 
