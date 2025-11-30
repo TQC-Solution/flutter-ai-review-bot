@@ -106,6 +106,10 @@ class OpenRouterClient:
 
                 # Add generation config
                 if Config.GENERATION_CONFIG:
+                    if not isinstance(Config.GENERATION_CONFIG, dict):
+                        raise OpenRouterAPIError(
+                            f"GENERATION_CONFIG must be a dict, got {type(Config.GENERATION_CONFIG).__name__}"
+                        )
                     if "temperature" in Config.GENERATION_CONFIG:
                         payload["temperature"] = Config.GENERATION_CONFIG["temperature"]
                     if "top_p" in Config.GENERATION_CONFIG:
@@ -175,7 +179,21 @@ class OpenRouterClient:
                     print(f"   ⚠️  {model_name} returned no choices")
                     return None
 
-                message = response_data["choices"][0].get("message", {})
+                # Get first choice - handle both dict and list formats
+                first_choice = response_data["choices"][0]
+                if not isinstance(first_choice, dict):
+                    raise OpenRouterAPIError(
+                        f"Unexpected response format: choices[0] is {type(first_choice).__name__}, "
+                        f"expected dict. Response: {response_data}"
+                    )
+
+                message = first_choice.get("message", {})
+                if not isinstance(message, dict):
+                    raise OpenRouterAPIError(
+                        f"Unexpected message format: message is {type(message).__name__}, "
+                        f"expected dict. Response: {response_data}"
+                    )
+
                 content = message.get("content", "")
 
                 if not content:
