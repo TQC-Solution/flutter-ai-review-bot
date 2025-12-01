@@ -587,35 +587,38 @@ Action tự động gửi thông tin project trong mỗi API request để giúp
 
 ### Cách hoạt động
 
-Mỗi request gửi đến OpenRouter sẽ bao gồm header `X-Title` với tên repository:
+Mỗi request gửi đến OpenRouter sẽ bao gồm header `X-Title` với tên repository và số PR:
 
 ```http
 POST https://openrouter.ai/api/v1/chat/completions
 Headers:
   Authorization: Bearer sk-or-v1-...
   Content-Type: application/json
-  X-Title: vincetran/flutter-ai-review-bot  ← Tên repo của bạn
+  X-Title: your-company/your-app - PR #123  ← Tên repo + PR number
 ```
 
 ### Lợi ích
 
-- 📊 **Theo dõi usage theo project**: Xem chi tiêu của từng repo riêng biệt trên [OpenRouter Activity](https://openrouter.ai/activity)
-- 🔍 **Debug dễ dàng**: Biết request nào thuộc project nào khi có lỗi
-- 💰 **Quản lý chi phí**: Phân tích cost breakdown theo từng dự án
+- 📊 **Theo dõi usage theo project và PR**: Xem chi tiêu của từng repo và từng PR riêng biệt trên [OpenRouter Activity](https://openrouter.ai/activity)
+- 🔍 **Debug dễ dàng**: Biết request nào thuộc PR nào khi có lỗi
+- 💰 **Quản lý chi phí**: Phân tích cost breakdown theo từng dự án và PR cụ thể
 
 ### Tùy chỉnh tên hiển thị
 
-Nếu muốn thay đổi tên hiển thị (mặc định là `GITHUB_REPOSITORY`):
+Nếu muốn thay đổi tên hiển thị (mặc định là `GITHUB_REPOSITORY - PR #<number>`):
 
 1. Mở file [`scripts/ai_review.py`](scripts/ai_review.py)
-2. Tìm dòng 56-59:
+2. Tìm dòng 56-60:
    ```python
    openrouter_client = OpenRouterClient(
        Config.OPENROUTER_API_KEY,
-       project_name=Config.GITHUB_REPOSITORY or "AI Code Review Bot"
+       project_name=Config.GITHUB_REPOSITORY or "AI Code Review Bot",
+       pr_number=pr_number
    )
    ```
-3. Thay `Config.GITHUB_REPOSITORY` bằng tên bạn muốn, ví dụ: `"My Flutter App"`
+3. Thay đổi theo ý muốn:
+   - Bỏ PR number: Xóa dòng `pr_number=pr_number`
+   - Đổi project name: Thay `Config.GITHUB_REPOSITORY` thành tên tùy chỉnh
 
 ---
 

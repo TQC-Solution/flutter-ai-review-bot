@@ -24,12 +24,13 @@ class OpenRouterAPIError(Exception):
 class OpenRouterClient:
     """Client for interacting with OpenRouter API."""
 
-    def __init__(self, api_key: str, project_name: str = "AI Code Review Bot"):
+    def __init__(self, api_key: str, project_name: str = "AI Code Review Bot", pr_number: int | None = None):
         """Initialize OpenRouter client.
 
         Args:
             api_key: OpenRouter API key
             project_name: Name of the project being reviewed (for X-Title header)
+            pr_number: Pull request number to include in X-Title header
 
         Raises:
             OpenRouterAPIError: If API key is not set
@@ -39,10 +40,16 @@ class OpenRouterClient:
 
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1"
+
+        # Build X-Title with project name and PR number
+        x_title = project_name
+        if pr_number:
+            x_title = f"{project_name} - PR #{pr_number}"
+
         self.headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "X-Title": project_name,
+            "X-Title": x_title,
         }
 
     def generate_review(self, prompt: str) -> str:
