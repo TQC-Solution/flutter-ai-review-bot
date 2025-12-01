@@ -50,6 +50,7 @@ class OpenRouterClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "X-Title": x_title,
+            "HTTP-Referer": "https://github.com/TQC-Solution/flutter-ai-review-bot"
         }
 
     def generate_review(self, prompt: str) -> str:
