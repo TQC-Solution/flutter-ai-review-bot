@@ -1,10 +1,10 @@
-"""AI Code Reviewer Package for Flutter/Dart projects using Google Gemini."""
+"""AI Code Reviewer Package for Flutter/Dart projects using OpenRouter AI."""
 
-__version__ = "1.0.0"
+__version__ = "3.0.0"
 
 from .config import Config
 from .github_client import GitHubClient, GitHubAPIError
-from .gemini_client import GeminiClient, GeminiAPIError
+from .openrouter_client import OpenRouterClient, OpenRouterAPIError
 from .prompt_builder import PromptBuilder
 from .diff_chunker import DiffChunker, DiffChunk
 from .utils import (
@@ -18,8 +18,8 @@ __all__ = [
     "Config",
     "GitHubClient",
     "GitHubAPIError",
-    "GeminiClient",
-    "GeminiAPIError",
+    "OpenRouterClient",
+    "OpenRouterAPIError",
     "PromptBuilder",
     "DiffChunker",
     "DiffChunk",
