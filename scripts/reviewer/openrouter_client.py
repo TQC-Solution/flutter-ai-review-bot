@@ -67,7 +67,6 @@ class OpenRouterClient:
             OpenRouterAPIError: If API call fails
         """
         model_name = Config.OPENROUTER_MODEL
-        print(f"   Using OpenRouter model: {model_name}")
 
         try:
             review = self._try_model_with_retry(model_name, prompt)
@@ -91,8 +90,6 @@ class OpenRouterClient:
         Raises:
             Exception: If non-retryable error occurs or max retries exceeded
         """
-        print(f"   Calling OpenRouter API with model: {model_name}...")
-
         retry_delay = Config.INITIAL_RETRY_DELAY
 
         for attempt in range(Config.MAX_RETRIES + 1):
@@ -177,9 +174,6 @@ class OpenRouterClient:
                 # Parse response
                 response_data = response.json()
 
-                # Debug logging
-                print(f"   DEBUG: Response type: {type(response_data).__name__}")
-
                 # Validate response_data is a dict
                 if not isinstance(response_data, dict):
                     raise OpenRouterAPIError(
@@ -201,12 +195,7 @@ class OpenRouterClient:
 
                 # Extract content from response
                 if "choices" not in response_data or len(response_data["choices"]) == 0:
-                    print(f"   ⚠️  {model_name} returned no choices")
                     return None
-
-                # Debug logging
-                print(f"   DEBUG: Choices type: {type(response_data['choices']).__name__}")
-                print(f"   DEBUG: First choice type: {type(response_data['choices'][0]).__name__}")
 
                 # Get first choice - handle both dict and list formats
                 first_choice = response_data["choices"][0]
@@ -226,20 +215,9 @@ class OpenRouterClient:
                 content = message.get("content", "")
 
                 if not content:
-                    print(f"   ⚠️  {model_name} returned empty content")
                     return None
 
-                print(f"   ✅ Review generated with {model_name} "
-                      f"({len(content)} characters)")
-
-                # Log reasoning details if available
-                if "reasoning_details" in message:
-                    reasoning_details = message["reasoning_details"]
-                    if isinstance(reasoning_details, dict):
-                        print(f"   🧠 Reasoning tokens used: "
-                              f"{reasoning_details.get('tokens', 'N/A')}")
-                    else:
-                        print(f"   🧠 Reasoning details: {reasoning_details}")
+                print(f"   ✅ Review generated successfully with {model_name}")
 
                 return content
 
