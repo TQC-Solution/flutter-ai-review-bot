@@ -53,7 +53,11 @@ def main():
 
     # Initialize clients
     github_client = GitHubClient(Config.GITHUB_REPOSITORY, Config.GITHUB_TOKEN)
-    openrouter_client = OpenRouterClient(Config.OPENROUTER_API_KEY)
+    openrouter_client = OpenRouterClient(
+        Config.OPENROUTER_API_KEY,
+        project_name=Config.GITHUB_REPOSITORY or "AI Code Review Bot",
+        pr_number=pr_number
+    )
     prompt_builder = PromptBuilder(Config.REVIEW_LANGUAGE)
 
     # Step 1: Fetch PR diff

@@ -29,6 +29,7 @@ Bạn nhận được comment:
 - ✅ **Easy Model Switching**: Change AI provider with just one config parameter - no code changes needed
 - ✅ **Free & Paid Options**: Choose from free models (Grok 4.1, Gemini 2.0) or premium ones (Claude 3.5, GPT-4)
 - ✅ **Reasoning Support**: Enable advanced reasoning for supported models (e.g., Grok 4.1)
+- ✅ **Request Tracking**: Automatically sends project name in `X-Title` header for usage tracking on OpenRouter dashboard
 - ✅ **Intelligent Chunking**: Automatically splits large PRs (>5 files, >30k chars) into reviewable chunks to ensure complete coverage
 - ✅ **Clean Architecture Review**: Validates layer dependencies and architectural patterns
 - ✅ **GetX Best Practices**: Checks controller lifecycle and instance management
@@ -386,6 +387,7 @@ flutter-ai-review-bot/
    - Hỗ trợ 200+ AI models
    - Xử lý retry khi bị rate limit
    - Hỗ trợ reasoning cho model nâng cao
+   - Tự động gửi tên project trong header `X-Title` để tracking usage
 
 4. **[prompt_builder.py](scripts/reviewer/prompt_builder.py)** - Xây dựng prompt
    - Load template prompt (tiếng Việt/Anh)
@@ -576,6 +578,47 @@ Action tự động:
 - **So sánh model**: [OpenRouter Models](https://openrouter.ai/models)
 
 **Khuyến nghị**: Dùng model miễn phí cho dự án cá nhân, model trả phí cho production
+
+---
+
+## OpenRouter Request Tracking
+
+Action tự động gửi thông tin project trong mỗi API request để giúp bạn tracking và phân loại usage trên OpenRouter dashboard.
+
+### Cách hoạt động
+
+Mỗi request gửi đến OpenRouter sẽ bao gồm header `X-Title` với tên repository và số PR:
+
+```http
+POST https://openrouter.ai/api/v1/chat/completions
+Headers:
+  Authorization: Bearer sk-or-v1-...
+  Content-Type: application/json
+  X-Title: your-company/your-app - PR #123  ← Tên repo + PR number
+```
+
+### Lợi ích
+
+- 📊 **Theo dõi usage theo project và PR**: Xem chi tiêu của từng repo và từng PR riêng biệt trên [OpenRouter Activity](https://openrouter.ai/activity)
+- 🔍 **Debug dễ dàng**: Biết request nào thuộc PR nào khi có lỗi
+- 💰 **Quản lý chi phí**: Phân tích cost breakdown theo từng dự án và PR cụ thể
+
+### Tùy chỉnh tên hiển thị
+
+Nếu muốn thay đổi tên hiển thị (mặc định là `GITHUB_REPOSITORY - PR #<number>`):
+
+1. Mở file [`scripts/ai_review.py`](scripts/ai_review.py)
+2. Tìm dòng 56-60:
+   ```python
+   openrouter_client = OpenRouterClient(
+       Config.OPENROUTER_API_KEY,
+       project_name=Config.GITHUB_REPOSITORY or "AI Code Review Bot",
+       pr_number=pr_number
+   )
+   ```
+3. Thay đổi theo ý muốn:
+   - Bỏ PR number: Xóa dòng `pr_number=pr_number`
+   - Đổi project name: Thay `Config.GITHUB_REPOSITORY` thành tên tùy chỉnh
 
 ---
 
